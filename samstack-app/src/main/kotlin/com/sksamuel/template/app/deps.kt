@@ -1,5 +1,6 @@
 package com.sksamuel.template.app
 
+import PooledR2dbcDataSource
 import com.sksamuel.hoplite.env.Environment
 import com.sksamuel.template.datastore.BeerDatastore
 import com.sksamuel.template.datastore.createDataSource
@@ -20,10 +21,10 @@ private val logger = KotlinLogging.logger { }
 fun createDependencies(env: Environment, serviceName: String, config: Config): Dependencies {
 
    val registry = createDatadogMeterRegistry(config.datadog, env, serviceName)
-   val ds = createDataSource(config.db, registry)
+   val ds = PooledR2dbcDataSource(createDataSource(config.db, registry))
 
-   val beerDatastore = BeerDatastore(ds)
-   val beerService = BeerService(beerDatastore)
+   val beerDatastore = BeerDatastore()
+   val beerService = BeerService(ds, beerDatastore)
 
    return Dependencies(
       registry,
@@ -41,7 +42,7 @@ fun createDependencies(env: Environment, serviceName: String, config: Config): D
  */
 data class Dependencies(
    val registry: MeterRegistry,
-   val ds: HikariDataSource,
+   val ds: PooledR2dbcDataSource,
    val beerDatastore: BeerDatastore,
    val beerService: BeerService,
 )

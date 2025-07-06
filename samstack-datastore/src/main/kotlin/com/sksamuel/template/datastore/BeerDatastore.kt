@@ -1,32 +1,23 @@
 package com.sksamuel.template.datastore
 
+import com.github.kantis.mikrom.Query
+import com.github.kantis.mikrom.datasource.SuspendingTransaction
+import com.github.kantis.mikrom.execute
+import com.github.kantis.mikrom.queryFor
 import com.sksamuel.template.myservice.domain.Beer
-import com.sksamuel.template.myservice.domain.BeerName
-import com.sksamuel.template.myservice.domain.BeerType
-import com.sksamuel.template.myservice.domain.Iso3Country
-import org.springframework.jdbc.core.RowMapper
-import javax.sql.DataSource
+import kotlinx.coroutines.flow.Flow
 
-class BeerDatastore(ds: DataSource) {
-
-   private val template = JdbcCoroutineTemplate(ds)
-
-   private val mapper = RowMapper { rs, _ ->
-      Beer(
-         name = BeerName(rs.getString("name")),
-         type = BeerType.valueOf(rs.getString("type")),
-         country = Iso3Country(rs.getString("country")),
-      )
-   }
-
-   suspend fun insert(beer: Beer): Result<Int> {
-      return template.update(
-         "INSERT INTO beers (name, type, country) VALUES (?,?,?)",
+class BeerDatastore() {
+   context(SuspendingTransaction)
+   suspend fun insert(beer: Beer) {
+      mikrom.execute(
+         Query("INSERT INTO beers (name, type, country) VALUES (?,?,?)"),
          listOf(beer.name.value, beer.type.name, beer.country.value)
       )
    }
 
-   suspend fun findAll(): Result<List<Beer>> {
-      return template.queryForList("SELECT * FROM beers", mapper)
+   context(SuspendingTransaction)
+   suspend fun findAll(): Flow<Beer> {
+      return mikrom.queryFor<Beer>(Query("SELECT * FROM beers"))
    }
 }

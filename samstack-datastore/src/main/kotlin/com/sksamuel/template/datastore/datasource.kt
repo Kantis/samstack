@@ -1,11 +1,29 @@
 package com.sksamuel.template.datastore
 
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import io.micrometer.core.instrument.MeterRegistry
+import io.r2dbc.pool.ConnectionPool
+import io.r2dbc.pool.ConnectionPoolConfiguration
+import io.r2dbc.pool.PoolingConnectionFactoryProvider.MAX_IDLE_TIME
+import io.r2dbc.pool.PoolingConnectionFactoryProvider.MAX_LIFE_TIME
+import io.r2dbc.pool.PoolingConnectionFactoryProvider.MAX_SIZE
+import io.r2dbc.pool.PoolingConnectionFactoryProvider.MIN_IDLE
+import io.r2dbc.pool.PoolingConnectionFactoryProvider.POOL_NAME
+import io.r2dbc.spi.ConnectionFactories
+import io.r2dbc.spi.ConnectionFactoryOptions
+import io.r2dbc.spi.ConnectionFactoryOptions.DATABASE
+import io.r2dbc.spi.ConnectionFactoryOptions.DRIVER
+import io.r2dbc.spi.ConnectionFactoryOptions.HOST
+import io.r2dbc.spi.ConnectionFactoryOptions.PASSWORD
+import io.r2dbc.spi.ConnectionFactoryOptions.PORT
+import io.r2dbc.spi.ConnectionFactoryOptions.PROTOCOL
+import io.r2dbc.spi.ConnectionFactoryOptions.USER
+import java.time.Duration
+
 
 data class DatabaseConfig(
-   val url: String,
+   val hostname: String,
+   val port: Int,
+   val database: String,
    val username: String,
    val password: String,
    val maximumPoolSize: Int = 8,
@@ -19,31 +37,36 @@ data class DatabaseConfig(
  * Creates the [HikariDataSource] connection pool.
  * Can be removed if you are not using a database in this application.
  */
-fun createDataSource(config: DatabaseConfig, registry: MeterRegistry?): HikariDataSource {
-   val hikariConfig = HikariConfig()
+fun createDataSource(config: DatabaseConfig, registry: MeterRegistry?): ConnectionPool {
+   val connectionFactory = ConnectionFactories.get(
+      ConnectionFactoryOptions.builder().apply {
+         option(DRIVER, "pool")
+         option(PROTOCOL, "postgresql") // driver identifier, PROTOCOL is delegated as DRIVER by the pool.
+         option(HOST, config.hostname)
+         option(PORT, config.port)
+         option(USER, config.username)
+         option(PASSWORD, config.password)
+         option(DATABASE, config.database)
+         option(MAX_SIZE, config.maximumPoolSize)
+         option(MIN_IDLE, config.minimumIdle)
+         config.maxLifetime?.let {
+            option(MAX_LIFE_TIME, Duration.ofSeconds(it))
+         }
 
-   hikariConfig.jdbcUrl = config.url
-   hikariConfig.username = config.username
-   hikariConfig.password = config.password
+         config.idleTimeout?.let {
+            option(MAX_IDLE_TIME, Duration.ofSeconds(it))
+         }
 
-   // maximum number of connections
-   hikariConfig.maximumPoolSize = config.maximumPoolSize
+         config.poolName?.let {
+            option(POOL_NAME, it)
+         }
+      }.build()
+   )
 
-   // keep at least this number of connections open
-   hikariConfig.minimumIdle = config.minimumIdle
+   val configuration = ConnectionPoolConfiguration.builder(connectionFactory)
+      .maxIdleTime(Duration.ofMillis(1000))
+      .maxSize(20)
+      .build()
 
-   // default is 30 minutes
-   config.maxLifetime?.let { hikariConfig.maxLifetime = it }
-
-   // how long a connection is unused before being shut down
-   config.idleTimeout?.let { hikariConfig.idleTimeout = it }
-
-   // in systems with multiple datasources, like readers and writers, can be useful to give
-   // them a name for metrics purposes
-   if (config.poolName != null) hikariConfig.poolName = config.poolName
-
-   // this wires in micrometer metrics
-   if (registry != null) hikariConfig.metricRegistry = registry
-
-   return HikariDataSource(hikariConfig)
+   return ConnectionPool(configuration)
 }

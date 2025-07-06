@@ -28,6 +28,8 @@ dependencyResolutionManagement {
    versionCatalogs {
       create("libs") {
 
+         library("mikrom-r2dbc", "io.github.kantis.mikrom:mikrom-r2dbc:0.1.0-SNAPSHOT")
+
          val micrometer = "1.14.5"
          library("micrometer-core", "io.micrometer:micrometer-core:$micrometer")
          library("micrometer-datadog", "io.micrometer:micrometer-registry-datadog:$micrometer")
@@ -96,8 +98,10 @@ dependencyResolutionManagement {
          val hikari = "6.3.0"
          library("hikari", "com.zaxxer:HikariCP:$hikari")
 
-         val postgres = "42.7.5"
-         library("postgresql", "org.postgresql:postgresql:$postgres")
+//         val postgres = "42.7.5"
+//         library("postgresql", "org.postgresql:postgresql:$postgres")
+         library("postgresql", "org.postgresql:r2dbc-postgresql:1.0.7.RELEASE")
+         library("r2dbc-pool", "io.r2dbc:r2dbc-pool:1.0.2.RELEASE")
 
          val flyway = "9.22.3"
          library("flyway-core", "org.flywaydb:flyway-core:$flyway")

@@ -8,6 +8,11 @@ plugins {
 
 subprojects {
    apply(plugin = "org.jetbrains.kotlin.jvm")
+   kotlin {
+      compilerOptions {
+         freeCompilerArgs.add("-Xcontext-receivers")
+      }
+   }
    dependencies {
       with(rootProject) {
          implementation(libs.bundles.coroutines)

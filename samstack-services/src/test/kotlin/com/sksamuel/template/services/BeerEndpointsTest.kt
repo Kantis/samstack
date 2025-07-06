@@ -1,6 +1,8 @@
 package com.sksamuel.template.services
 
+import PooledR2dbcDataSource
 import com.sksamuel.template.datastore.BeerDatastore
+import com.sksamuel.template.datastore.flywayMigrate
 import io.kotest.core.extensions.install
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -14,8 +16,9 @@ import io.ktor.server.testing.testApplication
 class BeerEndpointsTest : FunSpec() {
    init {
 
-      val ds = install(postgres)
-      val service = BeerService(BeerDatastore(ds))
+      val ds = install(postgres) { flywayMigrate(this) }
+      val mikromDs = PooledR2dbcDataSource(ds)
+      val service = BeerService(mikromDs, BeerDatastore())
 
       test("Missing route should return 404") {
          testApplication {
